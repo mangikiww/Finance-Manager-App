@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pengelola Keuangan</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 100px;
+            background: #333;
+            color: white;
+            height: 100vh;
+            position: fixed;
+            padding: 20px;
+        }
+
+        .sidebar h2 {
+            margin-top: 0;
+        }
+
+        .nav-link {
+            display: block;
+            color: white;
+            text-decoration: none;
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+        }
+
+        .nav-link.active {
+            background: #555;
+            border-radius: 4px;
+        }
+
+        .content {
+            margin-left: 150px;
+            padding: 20px;
+            width: 100%;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+
+        input, select, button {
+            margin: 5px 0;
+            padding: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Keuangan</h2>
+        <div class="nav-link" onclick="showSection('home')">Home</div>
+        <div class="nav-link" onclick="showSection('dompet')">Dompet</div>
+        <div class="nav-link" onclick="showSection('tambah')">Tambah</div>
+    </div>
+
+    <div class="content">
+        <div id="home" class="section active">
+            <h2>Dashboard</h2>
+            <div id="walletSummary"></div>
+        </div>
+
+        <div id="dompet" class="section">
+            <h2>Dompet</h2>
+            <div class="card">
+                <label>Pilih Dompet:</label>
+                <select id="walletSelect" onchange="showWalletDetails()"></select>
+                <div id="walletDetails"></div>
+            </div>
+        </div>
+
+        <div id="tambah" class="section">
+            <h2>Tambah</h2>
+            <div class="card">
+                <h3>Tambah Dompet Baru</h3>
+                <input type="text" id="newWalletName" placeholder="Nama Dompet">
+                <input type="number" id="initialAmount" placeholder="Saldo Awal">
+                <button onclick="addWallet()">Tambah Dompet</button>
+            </div>
+            
+            <div class="card">
+                <h3>Tambah Saldo</h3>
+                <select id="addFundWallet"></select>
+                <input type="number" id="fundAmount" placeholder="Jumlah">
+                <button onclick="addFunds()">Tambah Saldo</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let wallets = [];
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(sectionId).classList.add('active');
+            
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+
+            if (sectionId === 'home') {
+                updateDashboard();
+            } else if (sectionId === 'dompet') {
+                populateWalletSelect();
+            } else if (sectionId === 'tambah') {
+                populateAddFundSelect();
+            }
+        }
+
+        function updateDashboard() {
+            const summary = document.getElementById('walletSummary');
+            summary.innerHTML = '';
+            
+            if (wallets.length === 0) {
+                summary.innerHTML = '<p>Tidak ada dompet</p>';
+                return;
+            }
+
+            wallets.forEach(wallet => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <h3>${wallet.name}</h3>
+                    <p>Saldo: Rp ${wallet.balance.toLocaleString()}</p>
+                `;
+                summary.appendChild(card);
+            });
+        }
+
+        function populateWalletSelect() {
+            const select = document.getElementById('walletSelect');
+            select.innerHTML = '<option value="">-- Pilih Dompet --</option>';
+            
+            wallets.forEach(wallet => {
+                const option = document.createElement('option');
+                option.value = wallet.id;
+                option.textContent = wallet.name;
+                select.appendChild(option);
+            });
+        }
+
+        function populateAddFundSelect() {
+            const select = document.getElementById('addFundWallet');
+            select.innerHTML = '<option value="">-- Pilih Dompet --</option>';
+            
+            wallets.forEach(wallet => {
+                const option = document.createElement('option');
+                option.value = wallet.id;
+                option.textContent = wallet.name;
+                select.appendChild(option);
+            });
+        }
+
+        function showWalletDetails() {
+            const walletId = document.getElementById('walletSelect').value;
+            const details = document.getElementById('walletDetails');
+            details.innerHTML = '';
+            
+            if (!walletId) return;
+
+            const wallet = wallets.find(w => w.id === walletId);
+            if (!wallet) return;
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <h3>${wallet.name}</h3>
+                <p>Saldo Saat Ini: Rp ${wallet.balance.toLocaleString()}</p>
+                
+                <label>Nominal Penarikan:</label>
+                <input type="number" id="withdrawAmount" placeholder="Jumlah">
+                <label>Keterangan:</label>
+                <input type="text" id="withdrawDesc" placeholder="Keterangan">
+                <button onclick="withdrawFunds('${walletId}')">Tarik Dana</button>
+            `;
+            details.appendChild(card);
+        }
+
+        function addWallet() {
+            const name = document.getElementById('newWalletName').value;
+            const initialAmount = parseFloat(document.getElementById('initialAmount').value);
+            
+            if (!name || isNaN(initialAmount) || initialAmount < 0) {
+                alert('Masukkan data yang valid');
+                return;
+            }
+
+            const newWallet = {
+                id: Date.now().toString(),
+                name: name,
+                balance: initialAmount
+            };
+            
+            wallets.push(newWallet);
+            document.getElementById('newWalletName').value = '';
+            document.getElementById('initialAmount').value = '';
+            alert('Dompet berhasil ditambahkan');
+            populateWalletSelect();
+            populateAddFundSelect();
+        }
+
+        function addFunds() {
+            const walletId = document.getElementById('addFundWallet').value;
+            const amount = parseFloat(document.getElementById('fundAmount').value);
+            
+            if (!walletId || isNaN(amount) || amount <= 0) {
+                alert('Masukkan data yang valid');
+                return;
+            }
+
+            const wallet = wallets.find(w => w.id === walletId);
+            wallet.balance += amount;
+            document.getElementById('fundAmount').value = '';
+            alert('Saldo berhasil ditambahkan');
+            updateDashboard();
+            showWalletDetails();
+        }
+
+        function withdrawFunds(walletId) {
+            const amount = parseFloat(document.getElementById('withdrawAmount').value);
+            const desc = document.getElementById('withdrawDesc').value;
+            
+            if (isNaN(amount) || amount <= 0) {
+                alert('Masukkan jumlah yang valid');
+                return;
+            }
+
+            const wallet = wallets.find(w => w.id === walletId);
+            if (amount > wallet.balance) {
+                alert('Saldo tidak mencukupi');
+                return;
+            }
+
+            wallet.balance -= amount;
+            alert('Penarikan berhasil');
+            document.getElementById('withdrawAmount').value = '';
+            document.getElementById('withdrawDesc').value = '';
+            updateDashboard();
+            showWalletDetails();
+        }
+    </script>
+</body>
+</html>
